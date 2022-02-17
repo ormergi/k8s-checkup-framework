@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubevirt-latency-checkup-example-config
+  namespace: k8s-checkup-framework
+data:
+  spec.image: registry:5000/kubevirt-latency-checkup:latest
+  spec.timeout: 5m
+  spec.clusterRoles: |
+    nodes-reader
+    network-reader
+    kubevirts-reader
+    kubevirt-vmis-manager
+  spec.param.nad_namespace: "default"
+  spec.param.nad_name: "sriov-network"
+  spec.param.sample_duration_seconds: "5"
+  spec.param.source_node: "sriov-worker"
+  spec.param.target_node: "sriov-worker"
+  spec.param.max_desired_latency_milliseconds: "10"
+  spec.param.nad_namespace: "default"
