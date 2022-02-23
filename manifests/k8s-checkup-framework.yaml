@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k8s-checkup-framework
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: checkup-launcher-pod
+  namespace: k8s-checkup-framework
+spec:
+  containers:
+    - name: checkup-launcher-container
+      image: registry:5000/checkup-launcher:latest

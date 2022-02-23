@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -x
+set -e
+
+# Build the checkup-launcher binary
+go build
+
+# Build and tag the image
+# TODO - support other container runtimes
+docker image build . -t localhost:49158/checkup-launcher:latest
