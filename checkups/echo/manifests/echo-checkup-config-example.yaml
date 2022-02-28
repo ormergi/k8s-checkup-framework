@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: echo-checkup-example-config
+  namespace: k8s-checkup-framework
+data:
+  spec.image: registry:5000/echo-checkup:latest
+  spec.timeout: 1m
+  spec.param.message: "Hi!"
+...
