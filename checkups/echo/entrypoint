@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# echo checkup
+# Input:
+#   RESULT_CONFIGMAP_NAMESPACE - namespace of result ConfigMap object
+#   RESULT_CONFIGMAP_NAME - name of result ConfigMap object
+#   MESSAGE: a message to write as a result back to the framework
+# Output:
+#   Fills the data field of the ConfigMap supplied by the framework
+
+set -e
+
+date +"%Y-%m-%dT%H:%M:%S%:z" | tr -d "\n"
+echo " Starting echo checkup"
+
+# Check mandatory environment variables supplied by the framework
+if [ -z "$RESULT_CONFIGMAP_NAMESPACE" ]; then
+  echo "$0 error: RESULT_CONFIGMAP_NAMESPACE is empty" >&2
+  exit 1
+fi
+echo " - RESULT_CONFIGMAP_NAMESPACE: $RESULT_CONFIGMAP_NAMESPACE"
+
+if [ -z "$RESULT_CONFIGMAP_NAME" ]; then
+  echo "$0 error: RESULT_CONFIGMAP_NAME is empty" >&2
+  exit 1
+fi
+echo " - RESULT_CONFIGMAP_NAME: $RESULT_CONFIGMAP_NAME"
+
+# Check mandatory environment variables required by this checkup
+if [ -z "$MESSAGE" ]; then
+  echo "$0 error: MESSAGE is empty" >&2
+  exit 1
+fi
+echo " - MESSAGE: $MESSAGE"
+
+OUTPUT_FILE="/tmp/result_configmap.yaml"
+
+cat <<EOF >$OUTPUT_FILE
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $RESULT_CONFIGMAP_NAME
+  namespace: $RESULT_CONFIGMAP_NAMESPACE
+data:
+  status.succeeded: "true"
+  status.failureReason: none
+  status.result.echo: "$MESSAGE"
+...
+EOF
+
+date +"%Y-%m-%dT%H:%M:%S%:z" | tr -d "\n"
+echo " Trying to patch the result ConfigMap..."
+
+kubectl patch configmap "$RESULT_CONFIGMAP_NAME" -n "$RESULT_CONFIGMAP_NAMESPACE" --patch-file $OUTPUT_FILE
+
+date +"%Y-%m-%dT%H:%M:%S%:z" | tr -d "\n"
+echo " *** Done ***"

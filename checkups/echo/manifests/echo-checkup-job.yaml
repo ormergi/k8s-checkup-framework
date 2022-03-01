@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: echo-checkup
+  namespace: echo-checkup-ns
+spec:
+  activeDeadlineSeconds: 60
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: echo-checkup-sa
+      containers:
+        - name: echo
+          image: registry:5000/echo-checkup
+          env:
+            - name: RESULT_CONFIGMAP_NAMESPACE
+              value: echo-checkup-ns
+            - name: RESULT_CONFIGMAP_NAME
+              value: echo-checkup-result
+            - name: MESSAGE
+              value: Hi!
+      restartPolicy: Never
