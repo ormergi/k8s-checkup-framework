@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -e
+
+FRAMEWORK_NAMESPACE="k8s-checkup-framework"
+CONFIG_MAP_NAME="echo-checkup-example-config"
+CHECKUP_LAUNCHER_JOB_NAME="checkup-launcher"
+
+USER_CONFIG_MANIFEST_FILE="./checkups/echo/manifests/echo-checkup-config-example.yaml"
+CHECKUP_LAUNCHER_JOB_MANIFEST_FILE="./checkups/echo/manifests/echo-checkup-framework-job.yaml"
+
+WAIT_PERIOD_SEC=5
+
+kubectl version
+
+echo "Creating echo ConfigMap..."
+kubectl apply -f $USER_CONFIG_MANIFEST_FILE
+echo "Starting the checkup-launcher..."
+kubectl apply -f $CHECKUP_LAUNCHER_JOB_MANIFEST_FILE
+
+echo "Wait for checkup-launcher to finish or fail"
+while true; do
+  if kubectl wait --for=condition=complete --timeout=0 job.batch/${CHECKUP_LAUNCHER_JOB_NAME} -n $FRAMEWORK_NAMESPACE 2>/dev/null; then
+    break
+  fi
+
+  if kubectl wait --for=condition=failed --timeout=0 job.batch/${CHECKUP_LAUNCHER_JOB_NAME} -n $FRAMEWORK_NAMESPACE 2>/dev/null; then
+    break
+  fi
+
+  sleep $WAIT_PERIOD_SEC
+done
+
+echo "checkup-launcher logs:"
+kubectl logs job.batch/${CHECKUP_LAUNCHER_JOB_NAME} -n $FRAMEWORK_NAMESPACE
+
+echo "Removing the checkup-launcher..."
+kubectl delete -f $CHECKUP_LAUNCHER_JOB_MANIFEST_FILE
+
+echo "Results:"
+kubectl get configmap $CONFIG_MAP_NAME -n $FRAMEWORK_NAMESPACE -o yaml
+
+echo "Removing results ConfigMap..."
+kubectl delete -f $USER_CONFIG_MANIFEST_FILE
+
+echo
+date +"%Y-%m-%dT%H:%M:%S%:z" | tr -d "\n"
+echo " *** Done ***"
