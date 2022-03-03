@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/orelmisan/k8s-checkup-framework/checkup-launcher/checkup"
+	"github.com/orelmisan/k8s-checkup-framework/pkg/checkup"
 )
 
 func main() {
