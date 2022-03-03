@@ -1,10 +1,7 @@
-FROM golang:1.17.7-alpine3.15
+FROM alpine:3.15.0
 
-WORKDIR /usr/src/checkup-launcher
+RUN apk add --no-cache libc6-compat
 
-COPY . .
-RUN go mod verify
+COPY checkup-framework /usr/local/bin
 
-RUN go build -v -o /usr/local/bin/checkup-launcher
-
-ENTRYPOINT checkup-launcher
+ENTRYPOINT checkup-framework

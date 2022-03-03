@@ -12,7 +12,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: checkup-launcher
-          image: registry:5000/checkup-launcher:latest
+          image: registry:5000/checkup-framework:latest
           env:
           - name: CONFIGMAP_NAMESPACE
             value: k8s-checkup-framework

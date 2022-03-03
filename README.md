@@ -2,18 +2,14 @@
 
 # Checkup's Launcher
 ## Build Instructions
-1. Build the image:
 ```bash
-$ cd checkup-launcher
-$ ./build-image
-```
+# build checkup-framework image
+$ build/build-image
 
-Note: you can use other container engine to build the image, for example:
-```bash
-$ cd checkup-launcher
-$ CRI=docker ./build-image
+# override CRI to use different container runtime
+$ CRI=docker 
+$ build/build-image
 ```
-2. The result shall be an image tagged: `checkup-launcher:latest`
 
 ## Deployment Instructions
 1. Push the built image to a registry of your choice.

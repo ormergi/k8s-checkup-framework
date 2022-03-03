@@ -1,8 +1,54 @@
 #!/usr/bin/env bash
 
+# Notes:
+# [-]  In case podman is being used and the following error occurs
+#         WARN[0012] error mounting subscriptions, skipping entry in /usr/share/containers/mounts.conf:
+#         getting host subscription data: failed to read subscriptions from "/usr/share/rhel/secrets":
+#         open /usr/share/rhel/secrets/rhsm/rhsm.conf: permission denied
+#      Consider creating an empty 'mounts.conf' file workaround ('touch ~/.config/containers/mounts.conf)'
+#      https://bugzilla.redhat.com/show_bug.cgi?id=1874621#c5.
+#
+# [-]  The project directory is mounted as read-only in order to prevent changes to the sources.
+#      Also 'Z' flag is specified in order to make podman set the correct context inside the container,
+#      more details at https://docs.podman.io/en/latest/markdown/podman-run.1.html (search keyword ':Z')
+
 set -x
 set -e
 
+readonly SCRIPT_PATH=$(dirname "$(realpath "$0")")
+readonly PROJECT_PATH=$(realpath "${SCRIPT_PATH}/..")
+readonly OUT_DIR="${PROJECT_PATH}/_out"
+readonly BUILD_DIR="${PROJECT_PATH}/build"
+
+readonly GO_ALPINE_IMAGE="golang:1.17.7-alpine3.15"
+readonly CONTAINER_GO_BUILD_CACHE_DIR="/root/.cache/go-build"
+readonly CONTAINER_SRC_DIR="/go/src"
+readonly CONTAINER_OUT_DIR="/go/bin"
+readonly BINARY_NAME="checkup-framework"
+
+readonly CACHE_VOLUME_NAME="go-build-cache"
+
+readonly IMAGE_NAME="checkup-framework"
+TAG=${TAG:-latest}
+
 CRI="${CRI:-podman}"
 
-$CRI image build . -t checkup-launcher:latest
+[ -d "${OUT_DIR}" ] && \
+  rm -vrf ${OUT_DIR}/*
+
+$CRI volume inspect ${CACHE_VOLUME_NAME} >> /dev/null || \
+  $CRI volume create ${CACHE_VOLUME_NAME}
+
+mkdir -p ${OUT_DIR}
+
+$CRI run -it --rm \
+  --volume ${CACHE_VOLUME_NAME}:${CONTAINER_GO_BUILD_CACHE_DIR} \
+  --volume ${OUT_DIR}:${CONTAINER_OUT_DIR} \
+  --volume ${PROJECT_PATH}:${CONTAINER_SRC_DIR}:ro,Z \
+  --workdir ${CONTAINER_SRC_DIR} \
+  ${GO_ALPINE_IMAGE} \
+  go build -v -o "${CONTAINER_OUT_DIR}/${BINARY_NAME}" ./cmd
+
+$CRI image build ${OUT_DIR} \
+  --file ${BUILD_DIR}/Dockerfile \
+  --tag "${IMAGE_NAME}:${TAG}" \
