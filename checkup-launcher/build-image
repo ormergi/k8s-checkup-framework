@@ -1,11 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -x
 set -e
 
-# Build the checkup-launcher binary
-go build
+CRI="${CRI:-podman}"
 
-# Build and tag the image
-# TODO - support other container runtimes
-docker image build . -t localhost:49158/checkup-launcher:latest
+$CRI image build . -t checkup-launcher:latest

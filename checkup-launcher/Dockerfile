@@ -1,5 +1,10 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.5-230
+FROM golang:1.17.7-alpine3.15
 
-COPY ./checkup-launcher /usr/local/bin
+WORKDIR /usr/src/checkup-launcher
 
-CMD checkup-launcher
+COPY . .
+RUN go mod verify
+
+RUN go build -v -o /usr/local/bin/checkup-launcher
+
+ENTRYPOINT checkup-launcher
