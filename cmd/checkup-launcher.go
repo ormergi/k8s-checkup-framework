@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -39,11 +40,20 @@ func main() {
 	if err := workspace.SetupCheckupWorkspace(clientset); err != nil {
 		log.Fatalf("Failed to setup the checkup's environment: %v", err)
 	}
-	if err := workspace.StartCheckupJob(clientset); err != nil {
-		log.Fatalf("Failed to setup the checkup job: %v", err)
+	jobErr := workspace.StartAndWaitCheckupJob(clientset)
+
+	checkupJob := workspace.Job()
+	logCheckupSpec(checkupSpec)
+	if err := logCheckupJobLogs(clientset, checkupJob.Namespace); err != nil {
+		log.Printf("Failed to dump checkup job logs: %v", err)
 	}
 
-	logCheckupSpec(checkupSpec)
+	if jobErr != nil {
+		log.Fatalf("Error occured while running checkup job: %v", jobErr)
+	}
+	if isJobFailed(checkupJob) {
+		log.Fatalf("Checkup job completed with failure")
+	}
 }
 
 func createK8sClientSet() (*kubernetes.Clientset, error) {
@@ -109,4 +119,30 @@ func logCheckupSpec(spec *checkup.Spec) {
 	for _, role := range spec.Roles() {
 		log.Printf("\t\t%q\n", role)
 	}
+}
+
+func logCheckupJobLogs(client *kubernetes.Clientset, jobNamespace string) error {
+	podList, err := client.CoreV1().Pods(jobNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: checkup.JobNameLabel})
+	if err != nil {
+		return err
+	}
+	if len(podList.Items) < 1 {
+		return fmt.Errorf("no checkup job underlaying pods were found")
+	}
+	checkupJobPod := podList.Items[0]
+	rawLogs, err := client.CoreV1().Pods(checkupJobPod.Namespace).GetLogs(checkupJobPod.Name, &corev1.PodLogOptions{}).
+		DoRaw(context.Background())
+
+	log.Printf("Checkup logs:\n%s", string(rawLogs))
+
+	return nil
+}
+
+func isJobFailed(job *batchv1.Job) bool {
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batchv1.JobFailed {
+			return true
+		}
+	}
+	return false
 }
