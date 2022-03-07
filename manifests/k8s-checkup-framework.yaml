@@ -47,8 +47,10 @@ rules:
     verbs: [ "get", "list", "create" ]
   - apiGroups: [ "" ]
     resources: [ "configmaps" ]
+    verbs: [ "get", "list", "create", "update", "patch" ]
+  - apiGroups: [ "rbac.authorization.k8s.io" ]
+    resources: [ "roles" ]
     verbs: [ "get", "list", "create" ]
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -5,14 +5,16 @@ import (
 	"log"
 
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
-	namespacePrefix    = "checkup-"
-	configMapPrefix    = "checkup-results-"
-	serviceAccountName = "checkup-sa"
+	namespacePrefix          = "checkup-"
+	configMapPrefix          = "checkup-results-"
+	serviceAccountName       = "checkup-sa"
+	resultsConfigMapRoleName = "results-configmap-patcher"
 )
 
 type Workspace struct {
@@ -40,6 +42,10 @@ func (w *Workspace) Setup() error {
 	}
 
 	if err := w.createResultsConfigMap(); err != nil {
+		return err
+	}
+
+	if err := w.createResultsConfigMapRole(); err != nil {
 		return err
 	}
 
@@ -123,6 +129,33 @@ func (w *Workspace) createResultsConfigMap() error {
 
 	log.Printf("Successfuly created ConfigMap: %s/%s\n", namespace, name)
 	w.resultsConfigMapName = name
+
+	return nil
+}
+
+func (w *Workspace) createResultsConfigMapRole() error {
+	namespace := w.namespace
+	name := resultsConfigMapRoleName
+	resultsConfigMapName := w.resultsConfigMapName
+
+	resultsConfigMapRole := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Rules: []rbacv1.PolicyRule{{
+			Verbs:         []string{"get", "update", "patch"},
+			APIGroups:     []string{""},
+			Resources:     []string{"configmaps"},
+			ResourceNames: []string{resultsConfigMapName},
+		}},
+	}
+
+	if _, err := w.clientset.RbacV1().Roles(namespace).Create(context.Background(), resultsConfigMapRole, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	log.Printf("Successfully created Role: %s/%s\n", namespace, name)
 
 	return nil
 }
