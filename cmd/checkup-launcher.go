@@ -38,6 +38,12 @@ func main() {
 	}
 
 	logCheckupSpec(checkupSpec)
+
+	checkupWorkspace := checkup.NewWorkspace(clientset, checkupSpec)
+
+	if err := checkupWorkspace.Setup(); err != nil {
+		log.Fatalf("Failed to setup checkup workspace: %v\n", err.Error())
+	}
 }
 
 func createK8sClientSet() (*kubernetes.Clientset, error) {
