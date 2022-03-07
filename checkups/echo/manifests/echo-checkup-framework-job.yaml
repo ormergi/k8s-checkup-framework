@@ -2,16 +2,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: checkup-launcher
+  name: checkup-framework
   namespace: k8s-checkup-framework
 spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccount: checkup-launcher-sa
+      serviceAccount: checkup-framework-sa
       restartPolicy: Never
       containers:
-        - name: checkup-launcher
+        - name: checkup-framework
           image: registry:5000/checkup-framework:latest
           env:
           - name: CONFIGMAP_NAMESPACE
