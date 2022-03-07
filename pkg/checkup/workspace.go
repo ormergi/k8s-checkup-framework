@@ -9,13 +9,18 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const serviceAccountName = "checkup-sa"
+const (
+	namespacePrefix    = "checkup-"
+	configMapPrefix    = "checkup-results-"
+	serviceAccountName = "checkup-sa"
+)
 
 type Workspace struct {
-	clientset          *kubernetes.Clientset
-	spec               *Spec
-	namespace          string
-	serviceAccountName string
+	clientset            *kubernetes.Clientset
+	spec                 *Spec
+	namespace            string
+	serviceAccountName   string
+	resultsConfigMapName string
 }
 
 func NewWorkspace(clientset *kubernetes.Clientset, spec *Spec) *Workspace {
@@ -34,6 +39,10 @@ func (w *Workspace) Setup() error {
 		return err
 	}
 
+	if err := w.createResultsConfigMap(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -46,8 +55,6 @@ func (w *Workspace) Teardown() error {
 }
 
 func (w *Workspace) createNamespace() error {
-	const namespacePrefix = "checkup-"
-
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: namespacePrefix,
@@ -93,6 +100,29 @@ func (w *Workspace) createServiceAccount() error {
 
 	log.Printf("Successfuly created ServiceAccount: %s/%s\n", namespace, name)
 	w.serviceAccountName = name
+
+	return nil
+}
+
+func (w *Workspace) createResultsConfigMap() error {
+	namespace := w.namespace
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: configMapPrefix,
+			Namespace:    namespace,
+		},
+	}
+
+	createdConfigMap, err := w.clientset.CoreV1().ConfigMaps(namespace).Create(context.Background(), configMap, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	name := createdConfigMap.Name
+
+	log.Printf("Successfuly created ConfigMap: %s/%s\n", namespace, name)
+	w.resultsConfigMapName = name
 
 	return nil
 }
