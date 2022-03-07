@@ -30,6 +30,14 @@ func (w *Workspace) Setup() error {
 	return nil
 }
 
+func (w *Workspace) Teardown() error {
+	if err := w.deleteNamespace(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (w *Workspace) createNamespace() error {
 	const namespacePrefix = "checkup-"
 
@@ -46,6 +54,17 @@ func (w *Workspace) createNamespace() error {
 
 	w.namespace = createdNamespace.Name
 	log.Printf("Successfuly created namesapce: %q\n", w.namespace)
+
+	return nil
+}
+
+func (w *Workspace) deleteNamespace() error {
+	if err := w.clientset.CoreV1().Namespaces().Delete(context.Background(), w.namespace, metav1.DeleteOptions{}); err != nil {
+		return err
+	}
+
+	log.Printf("Successfuly deleted namesapce: %q\n", w.namespace)
+	w.namespace = ""
 
 	return nil
 }

@@ -44,6 +44,10 @@ func main() {
 	if err := checkupWorkspace.Setup(); err != nil {
 		log.Fatalf("Failed to setup checkup workspace: %v\n", err.Error())
 	}
+
+	if err := checkupWorkspace.Teardown(); err != nil {
+		log.Fatalf("Failed to teardown checkup workspace: %v\n", err.Error())
+	}
 }
 
 func createK8sClientSet() (*kubernetes.Clientset, error) {
