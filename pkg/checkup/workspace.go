@@ -9,10 +9,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const serviceAccountName = "checkup-sa"
+
 type Workspace struct {
-	clientset *kubernetes.Clientset
-	spec      *Spec
-	namespace string
+	clientset          *kubernetes.Clientset
+	spec               *Spec
+	namespace          string
+	serviceAccountName string
 }
 
 func NewWorkspace(clientset *kubernetes.Clientset, spec *Spec) *Workspace {
@@ -24,6 +27,10 @@ func NewWorkspace(clientset *kubernetes.Clientset, spec *Spec) *Workspace {
 
 func (w *Workspace) Setup() error {
 	if err := w.createNamespace(); err != nil {
+		return err
+	}
+
+	if err := w.createServiceAccount(); err != nil {
 		return err
 	}
 
@@ -65,6 +72,27 @@ func (w *Workspace) deleteNamespace() error {
 
 	log.Printf("Successfuly deleted namesapce: %q\n", w.namespace)
 	w.namespace = ""
+
+	return nil
+}
+
+func (w *Workspace) createServiceAccount() error {
+	namespace := w.namespace
+	name := serviceAccountName
+
+	serviceAccount := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+
+	if _, err := w.clientset.CoreV1().ServiceAccounts(namespace).Create(context.Background(), serviceAccount, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	log.Printf("Successfuly created ServiceAccount: %s/%s\n", namespace, name)
+	w.serviceAccountName = name
 
 	return nil
 }
