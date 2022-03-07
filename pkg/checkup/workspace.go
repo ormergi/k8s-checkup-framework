@@ -2,6 +2,7 @@ package checkup
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +47,10 @@ func (w *Workspace) Setup() error {
 	}
 
 	if err := w.createResultsConfigMapRole(); err != nil {
+		return err
+	}
+
+	if err := w.createResultsConfigMapRoleBinding(); err != nil {
 		return err
 	}
 
@@ -156,6 +161,40 @@ func (w *Workspace) createResultsConfigMapRole() error {
 	}
 
 	log.Printf("Successfully created Role: %s/%s\n", namespace, name)
+
+	return nil
+}
+
+func (w *Workspace) createResultsConfigMapRoleBinding() error {
+	namespace := w.namespace
+	roleName := resultsConfigMapRoleName
+	roleBindingName := fmt.Sprintf("%s-to-sa", roleName)
+	serviceAccountName := w.serviceAccountName
+
+	resultsConfigMapRoleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      roleBindingName,
+			Namespace: namespace,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      rbacv1.ServiceAccountKind,
+				Name:      serviceAccountName,
+				Namespace: namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "Role",
+			Name:     roleName,
+		},
+	}
+
+	if _, err := w.clientset.RbacV1().RoleBindings(namespace).Create(context.Background(), resultsConfigMapRoleBinding, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	log.Printf("Successfully created RoleBinding: %s/%s\n", namespace, roleBindingName)
 
 	return nil
 }
