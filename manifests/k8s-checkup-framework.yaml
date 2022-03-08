@@ -11,26 +11,57 @@ metadata:
   namespace: k8s-checkup-framework
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: configmap-reader
-  namespace: k8s-checkup-framework
+  name: checkup-framework
 rules:
-  - apiGroups: [ "" ]
-    resources: [ "configmaps" ]
-    verbs: [ "get" ]
+- apiGroups: [ "" ]
+  resources: [ "namespaces" ]
+  verbs:
+  - get
+  - list
+  - create
+- apiGroups: [ "" ]
+  resources: [ "serviceaccounts" ]
+  verbs:
+  - get
+  - list
+  - create
+- apiGroups: [ "" ]
+  resources: [ "configmaps" ]
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - patch
+- apiGroups: [ "rbac.authorization.k8s.io" ]
+  resources:
+  - roles
+  - clusterroles
+  - rolebindings
+  - clusterrolebindings
+  verbs:
+  - get
+  - list
+  - create
+- apiGroups: [ "batch" ]
+  resources: [ "jobs" ]
+  verbs:
+  - get
+  - list
+  - create
+  - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: configmap-reader-checkup-launcher-sa
-  namespace: k8s-checkup-framework
-subjects:
-  - kind: ServiceAccount
-    name: checkup-launcher-sa
-    namespace: k8s-checkup-framework
+  name: checkup-framework-to-sa
 roleRef:
-  kind: Role
-  name: configmap-reader
   apiGroup: rbac.authorization.k8s.io
-...
+  kind: ClusterRole
+  name: checkup-framework
+subjects:
+- kind: ServiceAccount
+  name: checkup-framework-sa
+  namespace: k8s-checkup-framework
