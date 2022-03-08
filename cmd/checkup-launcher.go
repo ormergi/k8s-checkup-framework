@@ -7,9 +7,7 @@ import (
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -35,6 +33,14 @@ func main() {
 	checkupSpec, err := checkup.NewSpecFromConfigMap(configMap)
 	if err != nil {
 		log.Fatalf("Failed to create checkup spec: %v\n", err.Error())
+	}
+
+	workspace := checkup.NewCheckupWorkspace(checkupSpec)
+	if err := workspace.SetupCheckupWorkspace(clientset); err != nil {
+		log.Fatalf("Failed to setup the checkup's environment: %v", err)
+	}
+	if err := workspace.StartCheckupJob(clientset); err != nil {
+		log.Fatalf("Failed to setup the checkup job: %v", err)
 	}
 
 	logCheckupSpec(checkupSpec)

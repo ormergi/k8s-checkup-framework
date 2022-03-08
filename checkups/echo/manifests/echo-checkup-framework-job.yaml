@@ -8,7 +8,7 @@ spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccount: checkup-launcher-sa
+      serviceAccount: checkup-framework-sa
       restartPolicy: Never
       containers:
         - name: checkup-launcher
