@@ -7,7 +7,7 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: checkup-launcher-sa
+  name: checkup-framework-sa
   namespace: k8s-checkup-framework
 ---
 apiVersion: rbac.authorization.k8s.io/v1
