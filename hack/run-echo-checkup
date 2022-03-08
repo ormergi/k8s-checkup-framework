@@ -19,12 +19,14 @@ echo "Starting the checkup-framework..."
 kubectl apply -f $CHECKUP_FRAMEWORK_JOB_MANIFEST_FILE
 
 echo "Waiting for checkup-framework to finish..."
+job_failed=false
 while true; do
   if kubectl wait --for=condition=complete --timeout=0 job.batch/${CHECKUP_FRAMEWORK_JOB_NAME} -n $FRAMEWORK_NAMESPACE 2>/dev/null; then
     break
   fi
 
   if kubectl wait --for=condition=failed --timeout=0 job.batch/${CHECKUP_FRAMEWORK_JOB_NAME} -n $FRAMEWORK_NAMESPACE 2>/dev/null; then
+    job_failed=true
     break
   fi
 
@@ -46,3 +48,8 @@ kubectl delete -f $USER_CONFIG_MANIFEST_FILE
 echo
 date +"%Y-%m-%dT%H:%M:%S%:z" | tr -d "\n"
 echo " *** Done ***"
+
+if [ "$job_failed" == "true" ]; then
+  echo "FATAL: error occurred while running echo checkup" 1>&2
+  exit 1
+fi
