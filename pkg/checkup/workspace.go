@@ -352,3 +352,22 @@ func (w *workspace) StartAndWaitCheckupJob(client *kubernetes.Clientset) error {
 
 	return nil
 }
+
+func (w *workspace) Teardown(client *kubernetes.Clientset) error {
+	if err := w.deleteNamespace(client); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *workspace) deleteNamespace(client *kubernetes.Clientset) error {
+	if err := client.CoreV1().Namespaces().Delete(context.Background(), w.namespace.Name, metav1.DeleteOptions{}); err != nil {
+		return err
+	}
+
+	log.Printf("Successfuly deleted namesapce: %q\n", w.namespace.Name)
+	w.namespace = nil
+
+	return nil
+}

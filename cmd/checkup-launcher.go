@@ -40,6 +40,13 @@ func main() {
 	if err := workspace.SetupCheckupWorkspace(clientset); err != nil {
 		log.Fatalf("Failed to setup the checkup's environment: %v", err)
 	}
+
+	defer func() {
+		if err := workspace.Teardown(clientset); err != nil {
+			log.Printf("Failed to tear-down the checkup workspace: %v", err)
+		}
+	}()
+
 	jobErr := workspace.StartAndWaitCheckupJob(clientset)
 
 	checkupJob := workspace.Job()
