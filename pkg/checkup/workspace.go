@@ -371,3 +371,26 @@ func (w *workspace) deleteNamespace(client *kubernetes.Clientset) error {
 
 	return nil
 }
+
+func (w *workspace) RetrieveCheckupStatus(client *kubernetes.Clientset) (*Status, error) {
+	resultsConfigMap, err := w.getResultsConfigMap(client)
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := newStatusFromConfigMap(resultsConfigMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return status, nil
+}
+
+func (w *workspace) getResultsConfigMap(client *kubernetes.Clientset) (*corev1.ConfigMap, error) {
+	configMap, err := client.CoreV1().ConfigMaps(w.namespace.Name).Get(context.Background(), w.resultConfigMap.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return configMap, nil
+}
