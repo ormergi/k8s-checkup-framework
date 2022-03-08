@@ -334,13 +334,21 @@ func (w *workspace) createRoleBindings(client *kubernetes.Clientset) error {
 	return nil
 }
 
-func (w *workspace) StartCheckupJob(client *kubernetes.Clientset) error {
+func (w *workspace) StartAndWaitCheckupJob(client *kubernetes.Clientset) error {
 	var err error
-	w.job, err = client.BatchV1().Jobs(w.namespace.Name).Create(context.Background(), w.job, metav1.CreateOptions{})
+	createdJob, err := client.BatchV1().Jobs(w.namespace.Name).Create(context.Background(), w.job, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to start checkup job: %v", err)
 	}
+	w.job = createdJob
 	log.Printf("checkup job %s sucessfully created", w.job.Name)
+
+	completedJob, err := WaitForJobToComplete(client, w.job.Name, w.job.Namespace, w.checkupTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait for checkup job to complete: %v", err)
+	}
+	w.job = completedJob
+	log.Printf("checkup job %s completed", w.job.Name)
 
 	return nil
 }
