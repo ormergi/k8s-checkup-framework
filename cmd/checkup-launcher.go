@@ -36,6 +36,8 @@ func main() {
 		log.Fatalf("Failed to create checkup spec: %v\n", err.Error())
 	}
 
+	logCheckupSpec(checkupSpec)
+
 	workspace := checkup.NewCheckupWorkspace(checkupSpec)
 	if err := workspace.SetupCheckupWorkspace(clientset); err != nil {
 		log.Fatalf("Failed to setup the checkup's environment: %v", err)
@@ -50,7 +52,6 @@ func main() {
 	jobErr := workspace.StartAndWaitCheckupJob(clientset)
 
 	checkupJob := workspace.Job()
-	logCheckupSpec(checkupSpec)
 	if err := logCheckupJobLogs(clientset, checkupJob.Namespace); err != nil {
 		log.Printf("Failed to dump checkup job logs: %v", err)
 	}
