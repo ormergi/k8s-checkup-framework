@@ -3,6 +3,13 @@
 set -x
 set -e
 
+readonly SCRIPT_PATH=$(dirname "$(realpath "$0")")
+
 CRI="${CRI:-podman}"
 
-$CRI image build . -t echo-checkup:latest
+readonly IMAGE_NAME="echo-checkup"
+TAG=${TAG:-latest}
+
+$CRI image build ${SCRIPT_PATH} \
+  --file ${SCRIPT_PATH}/Dockerfile \
+  --tag "${IMAGE_NAME}:${TAG}"

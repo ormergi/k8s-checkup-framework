@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -e
+
+readonly SCRIPT_PATH=$(dirname "$(realpath "$0")")
+readonly PROJECT_PATH=$(realpath "$SCRIPT_PATH/..")
+
+readonly FRAMEWORK_IMAGE="checkup-framework"
+readonly FRAMEWORK_TAG="latest"
+
+readonly ECHO_IMAGE="echo-checkup"
+readonly ECHO_TAG="latest"
+
+CRI="${CRI:-podman}"
+REGISTRY="${REGISTRY:-localhost:5000}"
+
+# build framework image
+CRI="$CRI" TAG="$FRAMEWORK_TAG" $PROJECT_PATH/build/build-image
+
+$CRI tag "${FRAMEWORK_IMAGE}:${FRAMEWORK_TAG}" "${REGISTRY}/${FRAMEWORK_IMAGE}:${FRAMEWORK_TAG}"
+$CRI push "${REGISTRY}/${FRAMEWORK_IMAGE}:${FRAMEWORK_TAG}"
+
+# build echo checkup image
+CRI="$CRI" TAG="$ECHO_TAG" $PROJECT_PATH/checkups/echo/build-image
+
+$CRI tag "${ECHO_IMAGE}:${ECHO_TAG}" "${REGISTRY}/${ECHO_IMAGE}:${ECHO_TAG}"
+$CRI push "${REGISTRY}/${ECHO_IMAGE}:${ECHO_TAG}"
+
+trap $PROJECT_PATH/hack/remove-framework EXIT
+$PROJECT_PATH/hack/deploy-framework
+$PROJECT_PATH/hack/run-echo-checkup
