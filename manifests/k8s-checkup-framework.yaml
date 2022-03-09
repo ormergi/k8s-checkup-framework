@@ -21,6 +21,7 @@ rules:
   - get
   - list
   - create
+  - delete
 - apiGroups: [ "" ]
   resources: [ "serviceaccounts" ]
   verbs:
