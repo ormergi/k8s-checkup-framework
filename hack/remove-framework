@@ -2,7 +2,10 @@
 
 set -e
 
-FRAMEWORK_ENV_MANIFEST_FILE="./manifests/k8s-checkup-framework.yaml"
+readonly SCRIPT_PATH=$(dirname "$(realpath "$0")")
+readonly PROJECT_PATH=$(realpath $SCRIPT_PATH/..)
+
+FRAMEWORK_ENV_MANIFEST_FILE="${PROJECT_PATH}/manifests/k8s-checkup-framework.yaml"
 
 kubectl version
 
