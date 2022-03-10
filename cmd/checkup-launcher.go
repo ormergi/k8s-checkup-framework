@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/orelmisan/k8s-checkup-framework/pkg/checkup"
+	"github.com/orelmisan/k8s-checkup-framework/pkg/framework"
 )
 
 func main() {
@@ -26,12 +27,12 @@ func main() {
 		log.Fatalf("Failed to create K8s clientset: %v\n", err.Error())
 	}
 
-	configMap, err := getConfigMap(clientset, cmNamespace, cmName)
+	frameworkConfigMap, err := getConfigMap(clientset, cmNamespace, cmName)
 	if err != nil {
 		log.Fatalf("Failed to get ConfigMap: %v\n", err.Error())
 	}
 
-	checkupSpec, err := checkup.NewSpecFromConfigMap(configMap)
+	checkupSpec, err := checkup.NewSpecFromConfigMap(frameworkConfigMap)
 	if err != nil {
 		log.Fatalf("Failed to create checkup spec: %v\n", err.Error())
 	}
@@ -49,7 +50,11 @@ func main() {
 		}
 	}()
 
+	frameworkStatus := framework.NewStatus()
+
+	frameworkStatus.SetStartTimestampToNow()
 	jobErr := workspace.StartAndWaitCheckupJob(clientset)
+	frameworkStatus.SetCompletionTimestampToNow()
 
 	checkupJob := workspace.Job()
 	if err := logCheckupJobLogs(clientset, checkupJob.Namespace); err != nil {
@@ -57,10 +62,28 @@ func main() {
 	}
 
 	if jobErr != nil {
-		log.Fatalf("Error occured while running checkup job: %v", jobErr)
+		frameworkStatus.SetSucceeded(false)
+		frameworkStatus.SetFailureReason(jobErr.Error())
+		log.Printf("Error occured while running checkup job: %v", jobErr)
 	}
+
 	if isJobFailed(checkupJob) {
-		log.Fatalf("Checkup job completed with failure")
+		errMsg := "Checkup job completed with failure"
+		frameworkStatus.SetSucceeded(false)
+		frameworkStatus.SetFailureReason(errMsg)
+		log.Printf(errMsg)
+	}
+
+	checkupStatus, err := workspace.RetrieveCheckupStatus(clientset)
+	if err != nil {
+		log.Printf("Failed to retrive checkup status: %v\n", err.Error())
+	} else {
+		frameworkStatus.UpdateFromCheckupStatus(checkupStatus)
+	}
+
+	framework.AppendStatusToFrameworkConfigMap(frameworkConfigMap, frameworkStatus)
+	if err := updateConfigMap(clientset, frameworkConfigMap); err != nil {
+		log.Fatalf("Failed to update user's ConfigMap with checkup status: %v\n", err.Error())
 	}
 }
 
@@ -153,4 +176,13 @@ func isJobFailed(job *batchv1.Job) bool {
 		}
 	}
 	return false
+}
+
+func updateConfigMap(clientset *kubernetes.Clientset, frameworkConfigMap *corev1.ConfigMap) error {
+
+	if _, err := clientset.CoreV1().ConfigMaps(frameworkConfigMap.Namespace).Update(context.Background(), frameworkConfigMap, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+
+	return nil
 }
