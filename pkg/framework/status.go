@@ -1,10 +1,12 @@
 package framework
 
 import (
-	"github.com/orelmisan/k8s-checkup-framework/pkg/checkup"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/orelmisan/k8s-checkup-framework/pkg/checkup"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -53,8 +55,13 @@ func (s *Status) UpdateFromCheckupStatus(checkupStatus *checkup.Status) {
 		s.succeeded = checkupStatus.Succeeded()
 	}
 
-	if s.failureReason == "" && checkupStatus.FailureReason() != "" {
-		s.failureReason = checkupStatus.FailureReason()
+	checkupFailureReason := checkupStatus.FailureReason()
+	if checkupFailureReason != "" {
+		if s.failureReason == "" {
+			s.failureReason = checkupFailureReason
+		} else {
+			s.failureReason = fmt.Sprintf("%s: %s", s.failureReason, checkupFailureReason)
+		}
 	}
 
 	s.results = make(map[string]string)
