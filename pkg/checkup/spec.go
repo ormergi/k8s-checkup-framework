@@ -52,7 +52,7 @@ func NewSpecFromConfigMap(configMap *corev1.ConfigMap) (*Spec, error) {
 
 	spec.params = make(map[string]string)
 	for k, v := range configMap.Data {
-		if strings.HasPrefix(k, CheckupParamNameKeyPrefix) && v != "" {
+		if strings.HasPrefix(k, CheckupParamNameKeyPrefix) {
 			paramName := strings.TrimPrefix(k, CheckupParamNameKeyPrefix)
 			spec.params[paramName] = v
 		}

@@ -163,9 +163,7 @@ func createEnvVarsFromSpec(parametersMap map[string]string) []corev1.EnvVar {
 	var checkupEnvVars []corev1.EnvVar
 	if len(parametersMap) > 0 {
 		for k, v := range parametersMap {
-			if k != "" && v != "" {
-				checkupEnvVars = append(checkupEnvVars, corev1.EnvVar{Name: strings.ToUpper(k), Value: v})
-			}
+			checkupEnvVars = append(checkupEnvVars, corev1.EnvVar{Name: strings.ToUpper(k), Value: v})
 		}
 	}
 	return checkupEnvVars
