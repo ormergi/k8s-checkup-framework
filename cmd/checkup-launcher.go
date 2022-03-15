@@ -77,13 +77,6 @@ func main() {
 		log.Printf("Error occured while running checkup job: %v", jobErr)
 	}
 
-	if isJobFailed(checkupJob) {
-		errMsg := "Checkup job completed with failure"
-		frameworkStatus.SetSucceeded(false)
-		frameworkStatus.SetFailureReason(errMsg)
-		log.Printf(errMsg)
-	}
-
 	checkupStatus, err := workspace.RetrieveCheckupStatus(clientset)
 	if err != nil {
 		log.Printf("Failed to retrive checkup status: %v\n", err.Error())

@@ -3,10 +3,11 @@ package checkup
 import (
 	"context"
 	"fmt"
-	"k8s.io/client-go/kubernetes"
 	"log"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/kubernetes"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -347,7 +348,7 @@ func (w *workspace) StartAndWaitCheckupJob(client *kubernetes.Clientset) error {
 
 	completedJob, err := WaitForJobToComplete(client, w.job.Name, w.job.Namespace, w.checkupTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to wait for checkup job to complete: %v", err)
+		return err
 	}
 	w.job = completedJob
 	log.Printf("checkup job %s completed", w.job.Name)

@@ -31,14 +31,13 @@ func WaitForJobToComplete(client *kubernetes.Clientset, jobName, jobNamespace st
 }
 
 func waitForJobCompletionEvent(timeout time.Duration, watcher k8swatch.Interface) (*batchv1.Job, error) {
-	const timeoutErrorMsg = "timeout reached"
 	timeoutTimer := time.NewTimer(timeout)
 	eventsCh := watcher.ResultChan()
 	defer watcher.Stop()
 	for {
 		select {
 		case <-timeoutTimer.C:
-			return nil, fmt.Errorf("%s", timeoutErrorMsg)
+			return nil, fmt.Errorf("job was not finished on time timeout reached")
 		case event := <-eventsCh:
 			job, ok := event.Object.(*batchv1.Job)
 			if !ok {
@@ -49,16 +48,29 @@ func waitForJobCompletionEvent(timeout time.Duration, watcher k8swatch.Interface
 			raw, _ := json.MarshalIndent(job.Status, "", " ")
 			log.Println(string(raw))
 
-			if isJobFailedOrCompleted(job) {
+			if isJobCompleted(job) {
 				return job, nil
+			}
+
+			if isJobFailed(job) {
+				return job, fmt.Errorf("job is finished with a failure")
 			}
 		}
 	}
 }
 
-func isJobFailedOrCompleted(job *batchv1.Job) bool {
+func isJobCompleted(job *batchv1.Job) bool {
 	for _, condition := range job.Status.Conditions {
-		if condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed {
+		if condition.Type == batchv1.JobComplete {
+			return true
+		}
+	}
+	return false
+}
+
+func isJobFailed(job *batchv1.Job) bool {
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batchv1.JobFailed {
 			return true
 		}
 	}
