@@ -8,6 +8,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -39,7 +40,16 @@ func main() {
 
 	logCheckupSpec(checkupSpec)
 
-	workspace := checkup.NewCheckupWorkspace(checkupSpec)
+	clusterRoles := []v1.ClusterRole{}
+	for _, clusterRoleName := range checkupSpec.ClusterRoles() {
+		cr, err := clientset.RbacV1().ClusterRoles().Get(context.Background(), clusterRoleName, metav1.GetOptions{})
+		if err != nil {
+			log.Fatalf("ClusterRole not found %s: %v", clusterRoleName, err)
+		}
+		clusterRoles = append(clusterRoles, *cr)
+	}
+
+	workspace := checkup.NewCheckupWorkspace(checkupSpec, clusterRoles)
 	if err := workspace.SetupCheckupWorkspace(clientset); err != nil {
 		log.Fatalf("Failed to setup the checkup's environment: %v", err)
 	}
