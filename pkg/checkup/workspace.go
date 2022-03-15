@@ -181,16 +181,12 @@ func newCheckupJob(image string, envs []corev1.EnvVar, resources corev1.Resource
 	checkupContainer := newCheckupJobContainer(image, envs, resources)
 	terminationGracePeriodSeconds := int64(5)
 	checkupPodSpec := newPodTemplateSpec(&terminationGracePeriodSeconds, []corev1.Container{checkupContainer})
-	activeDeadlineSeconds := int64(timeout.Seconds())
 	backoffLimit := int32(0)
-	ttlSecondsAfterFinished := int32(5)
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: batchv1.JobSpec{
-			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			BackoffLimit:            &backoffLimit,
-			TTLSecondsAfterFinished: &ttlSecondsAfterFinished,
-			Template:                checkupPodSpec,
+			BackoffLimit: &backoffLimit,
+			Template:     checkupPodSpec,
 		},
 	}
 }
