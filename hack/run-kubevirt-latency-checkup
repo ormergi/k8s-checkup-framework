@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -e
+
+readonly SCRIPT_PATH=$(dirname "$(realpath "$0")")
+readonly PROJECT_PATH=$(realpath $SCRIPT_PATH/..)
+
+readonly KUBEVIRT_LATENCY_DIR="${PROJECT_PATH}/checkups/kubevirt-vm-latency"
+
+readonly FRAMEWORK_NAMESPACE="k8s-checkup-framework"
+readonly CONFIG_MAP_NAME="kubevirt-latency-checkup-example-config"
+readonly CHECKUP_FRAMEWORK_JOB_NAME="checkup-framework"
+
+readonly NADS="${KUBEVIRT_LATENCY_DIR}/manifests/nads.yaml"
+readonly CLUSTERROLES="${KUBEVIRT_LATENCY_DIR}/manifests/kubevirt-latency-checkup-framwork-clusterroles.yaml"
+readonly CLUSTERROLES_BINDING="${KUBEVIRT_LATENCY_DIR}/manifests/kubevirt-latency-checkup-framwork-clusterrolebindings.yaml"
+
+readonly USER_CONFIG_MANIFEST="${KUBEVIRT_LATENCY_DIR}/manifests/kubevirt-latency-checkup-config-example.yaml"
+readonly CHECKUP_FRAMEWORK_JOB_MANIFEST="${KUBEVIRT_LATENCY_DIR}/manifests/kubevirt-latency-checkup-framework-job.yaml"
+
+readonly WAIT_PERIOD_SEC=5
+
+kubectl version
+
+echo "Creating NetworkAttachmentDefinition..."
+kubectl apply -f $NADS
+
+echo "Creating Roles and ClusterRoles required by kubevirt-latency-checkup..."
+kubectl apply -f $CLUSTERROLES
+kubectl apply -f $CLUSTERROLES_BINDING
+
+echo "Creating echo ConfigMap..."
+kubectl apply -f $USER_CONFIG_MANIFEST
+kubectl get configmap $CONFIG_MAP_NAME -n $FRAMEWORK_NAMESPACE -o jsonpath='{.data}' | jq
+
+echo "Starting the checkup-framework..."
+kubectl apply -f $CHECKUP_FRAMEWORK_JOB_MANIFEST
+
+echo "Waiting for checkup-framework to finish..."
+job_failed=false
+while true; do
+  if kubectl wait --for=condition=complete --timeout=0 job.batch/${CHECKUP_FRAMEWORK_JOB_NAME} -n $FRAMEWORK_NAMESPACE 2>/dev/null; then
+    break
+  fi
+
+  if kubectl wait --for=condition=failed --timeout=0 job.batch/${CHECKUP_FRAMEWORK_JOB_NAME} -n $FRAMEWORK_NAMESPACE 2>/dev/null; then
+    job_failed=true
+    break
+  fi
+
+  sleep $WAIT_PERIOD_SEC
+done
+
+echo "checkup-framework logs:"
+kubectl logs job.batch/${CHECKUP_FRAMEWORK_JOB_NAME} -n $FRAMEWORK_NAMESPACE
+
+echo "Removing the checkup-framework..."
+kubectl delete -f $CHECKUP_FRAMEWORK_JOB_MANIFEST
+
+echo "Results:"
+kubectl get configmap $CONFIG_MAP_NAME -n $FRAMEWORK_NAMESPACE -o jsonpath='{.data}' | jq
+
+echo "Removing results ConfigMap..."
+kubectl delete -f $USER_CONFIG_MANIFEST
+
+echo
+date +"%Y-%m-%dT%H:%M:%S%:z" | tr -d "\n"
+echo " *** Done ***"
+
+if [ "$job_failed" == "true" ]; then
+  echo "FATAL: error occurred while running echo checkup" 1>&2
+  exit 1
+fi
