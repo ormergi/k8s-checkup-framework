@@ -11,66 +11,13 @@ metadata:
   namespace: k8s-checkup-framework
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: checkup-framework
-rules:
-- apiGroups: [ "" ]
-  resources: [ "namespaces" ]
-  verbs:
-  - get
-  - list
-  - create
-  - delete
-- apiGroups: [ "" ]
-  resources: [ "serviceaccounts" ]
-  verbs:
-  - get
-  - list
-  - create
-- apiGroups: [ "" ]
-  resources: [ "configmaps" ]
-  verbs:
-  - get
-  - list
-  - create
-  - update
-  - patch
-- apiGroups: [ "rbac.authorization.k8s.io" ]
-  resources:
-  - roles
-  - clusterroles
-  - rolebindings
-  - clusterrolebindings
-  verbs:
-  - get
-  - list
-  - create
-- apiGroups: [ "batch" ]
-  resources: [ "jobs" ]
-  verbs:
-  - get
-  - list
-  - create
-  - delete
-  - watch
-- apiGroups: [ "" ]
-  resources: [ "pods" ]
-  verbs:
-  - get
-  - list
-- apiGroups: [ "" ]
-  resources: [ "pods/log" ]
-  verbs: [ "get" ]
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: checkup-framework-to-sa
+  name: cluster-admin-to-checkup-framework-sa
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: checkup-framework
+  name: cluster-admin
 subjects:
 - kind: ServiceAccount
   name: checkup-framework-sa

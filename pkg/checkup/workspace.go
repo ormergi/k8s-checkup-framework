@@ -3,10 +3,11 @@ package checkup
 import (
 	"context"
 	"fmt"
-	"k8s.io/client-go/kubernetes"
 	"log"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/kubernetes"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +52,7 @@ func (w *workspace) Job() *batchv1.Job {
 	return w.job
 }
 
-func NewCheckupWorkspace(checkupSpec *Spec) *workspace {
+func NewCheckupWorkspace(checkupSpec *Spec, clusterRoles []rbacv1.ClusterRole) *workspace {
 	workspace := &workspace{}
 
 	workspace.checkupTimeout = checkupSpec.timeout
@@ -59,22 +60,30 @@ func NewCheckupWorkspace(checkupSpec *Spec) *workspace {
 	workspace.serviceAccount = newServiceAccount(serviceAccountName, checkupNamespaceName)
 	workspace.resultConfigMap = newConfigMap(resultsConfigMapName, checkupNamespaceName)
 
-	workspace.roles = map[string]rbacv1.Role{}
-	workspace.roles[resultsConfigMapWriterRoleName] = newConfigMapWriterRole(
-		resultsConfigMapWriterRoleName,
-		checkupNamespaceName,
-		workspace.resultConfigMap.Name)
+	workspace.clusterRoles = map[string]rbacv1.ClusterRole{}
+	for _, clusterRole := range clusterRoles {
+		workspace.clusterRoles[clusterRole.Name] = clusterRole
+	}
 
 	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: serviceAccountName, Namespace: checkupNamespaceName}
 
-	workspace.roleBindings = map[string]rbacv1.RoleBinding{}
-	for _, role := range workspace.roles {
-		workspace.roleBindings[role.Name] = newRoleBindingForSubject(role, subject)
+	resultsWriterRole := newConfigMapWriterRole(
+		resultsConfigMapWriterRoleName,
+		checkupNamespaceName,
+		workspace.resultConfigMap.Name,
+	)
+	resultsWriterRoleBinding := newRoleBindingForSubject(resultsWriterRole, subject)
+
+	workspace.roles = map[string]rbacv1.Role{
+		resultsWriterRole.Name: resultsWriterRole,
 	}
 
-	workspace.clusterRoles = map[string]rbacv1.ClusterRole{}
-	workspace.clusterRoleBindings = map[string]rbacv1.ClusterRoleBinding{}
-	for _, clusterRole := range workspace.clusterRoles {
+	workspace.roleBindings = map[string]rbacv1.RoleBinding{
+		resultsWriterRoleBinding.Name: resultsWriterRoleBinding,
+	}
+
+	workspace.clusterRoleBindings = make(map[string]rbacv1.ClusterRoleBinding, len(workspace.clusterRoles))
+	for _, clusterRole := range clusterRoles {
 		workspace.clusterRoleBindings[clusterRole.Name] = newClusterRoleBindingForSubject(clusterRole, subject)
 	}
 
@@ -163,9 +172,7 @@ func createEnvVarsFromSpec(parametersMap map[string]string) []corev1.EnvVar {
 	var checkupEnvVars []corev1.EnvVar
 	if len(parametersMap) > 0 {
 		for k, v := range parametersMap {
-			if k != "" && v != "" {
-				checkupEnvVars = append(checkupEnvVars, corev1.EnvVar{Name: strings.ToUpper(k), Value: v})
-			}
+			checkupEnvVars = append(checkupEnvVars, corev1.EnvVar{Name: strings.ToUpper(k), Value: v})
 		}
 	}
 	return checkupEnvVars
@@ -175,16 +182,12 @@ func newCheckupJob(image string, envs []corev1.EnvVar, resources corev1.Resource
 	checkupContainer := newCheckupJobContainer(image, envs, resources)
 	terminationGracePeriodSeconds := int64(5)
 	checkupPodSpec := newPodTemplateSpec(&terminationGracePeriodSeconds, []corev1.Container{checkupContainer})
-	activeDeadlineSeconds := int64(timeout.Seconds())
 	backoffLimit := int32(0)
-	ttlSecondsAfterFinished := int32(5)
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: batchv1.JobSpec{
-			ActiveDeadlineSeconds:   &activeDeadlineSeconds,
-			BackoffLimit:            &backoffLimit,
-			TTLSecondsAfterFinished: &ttlSecondsAfterFinished,
-			Template:                checkupPodSpec,
+			BackoffLimit: &backoffLimit,
+			Template:     checkupPodSpec,
 		},
 	}
 }
@@ -345,7 +348,7 @@ func (w *workspace) StartAndWaitCheckupJob(client *kubernetes.Clientset) error {
 
 	completedJob, err := WaitForJobToComplete(client, w.job.Name, w.job.Namespace, w.checkupTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to wait for checkup job to complete: %v", err)
+		return err
 	}
 	w.job = completedJob
 	log.Printf("checkup job %s completed", w.job.Name)
@@ -354,8 +357,18 @@ func (w *workspace) StartAndWaitCheckupJob(client *kubernetes.Clientset) error {
 }
 
 func (w *workspace) Teardown(client *kubernetes.Clientset) error {
+	var teardownErrors []error
+
 	if err := w.deleteNamespace(client); err != nil {
-		return err
+		teardownErrors = append(teardownErrors, err)
+	}
+
+	if err := w.deleteClusterRoleBindings(client); err != nil {
+		teardownErrors = append(teardownErrors, err)
+	}
+
+	if len(teardownErrors) > 0 {
+		return concateErrors(teardownErrors)
 	}
 
 	return nil
@@ -370,6 +383,39 @@ func (w *workspace) deleteNamespace(client *kubernetes.Clientset) error {
 	w.namespace = nil
 
 	return nil
+}
+
+func (w *workspace) deleteClusterRoleBindings(client *kubernetes.Clientset) error {
+	clusterRoleBindingDeleteErrors := []error{}
+	for _, clusterRoleBinding := range w.clusterRoleBindings {
+		if err := deleteClusterRoleBinding(client, &clusterRoleBinding); err != nil {
+			clusterRoleBindingDeleteErrors = append(clusterRoleBindingDeleteErrors, err)
+		}
+		log.Printf("Successfuly deleted ClusterRole: %s", clusterRoleBinding.Name)
+
+	}
+
+	if len(clusterRoleBindingDeleteErrors) > 0 {
+		return concateErrors(clusterRoleBindingDeleteErrors)
+	}
+
+	return nil
+}
+
+func deleteClusterRoleBinding(client *kubernetes.Clientset, crd *rbacv1.ClusterRoleBinding) error {
+	return client.RbacV1().ClusterRoleBindings().
+		Delete(context.Background(), crd.Name, metav1.DeleteOptions{})
+}
+
+func concateErrors(errs []error) error {
+	sb := strings.Builder{}
+
+	for _, err := range errs {
+		sb.WriteString(err.Error())
+		sb.WriteString("\n")
+	}
+
+	return fmt.Errorf("%s", sb.String())
 }
 
 func (w *workspace) RetrieveCheckupStatus(client *kubernetes.Clientset) (*Status, error) {

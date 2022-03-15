@@ -49,7 +49,7 @@ func newStatusFromConfigMap(configMap *corev1.ConfigMap) (*Status, error) {
 
 	status.failureReason, exists = configMap.Data[statusFailureReasonKey]
 	if !exists {
-		status.failureReason = "Unknown"
+		status.failureReason = ""
 	}
 
 	status.results = make(map[string]string)

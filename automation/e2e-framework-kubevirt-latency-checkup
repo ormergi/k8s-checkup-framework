@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -e
+
+readonly SCRIPT_PATH=$(dirname "$(realpath "$0")")
+readonly PROJECT_PATH=$(realpath $SCRIPT_PATH/..)
+
+readonly FRAMEWORK_IMAGE="checkup-framework"
+readonly FRAMEWORK_TAG="latest"
+
+readonly KUBEVIRT_LATENCY_IMAGE="kubevirt-latency-checkup"
+readonly KUBEVIRT_LATENCY_TAG="latest"
+
+CRI="${CRI:-podman}"
+REGISTRY="${REGISTRY:-localhost:5000}"
+
+# build framework image
+CRI="$CRI" TAG="$FRAMEWORK_TAG" $PROJECT_PATH/build/build-image
+
+$CRI tag "${FRAMEWORK_IMAGE}:${FRAMEWORK_TAG}" "${REGISTRY}/${FRAMEWORK_IMAGE}:${FRAMEWORK_TAG}"
+$CRI push "${REGISTRY}/${FRAMEWORK_IMAGE}:${FRAMEWORK_TAG}"
+
+# build kubevirt latency checkup image
+CRI="$CRI" IMAGE="$KUBEVIRT_LATENCY_IMAGE" TAG="$KUBEVIRT_LATENCY_TAG" $PROJECT_PATH/checkups/kubevirt-vm-latency/build/build-image
+
+$CRI tag "${KUBEVIRT_LATENCY_IMAGE}:${KUBEVIRT_LATENCY_TAG}" "${REGISTRY}/${KUBEVIRT_LATENCY_IMAGE}:${KUBEVIRT_LATENCY_TAG}"
+$CRI push "${REGISTRY}/${KUBEVIRT_LATENCY_IMAGE}:${KUBEVIRT_LATENCY_TAG}"
+
+trap $PROJECT_PATH/hack/remove-framework EXIT
+$PROJECT_PATH/hack/deploy-framework
+$PROJECT_PATH/hack/run-kubevirt-latency-checkup
