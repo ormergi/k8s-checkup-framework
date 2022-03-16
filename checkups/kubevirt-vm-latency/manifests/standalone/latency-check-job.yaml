@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: latencycheck
+  namespace: kubevirt-latency-check
+spec:
+  activeDeadlineSeconds: 
+  ttlSecondsAfterFinished: 30
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: "Never"
+      terminationGracePeriodSeconds: 5
+      serviceAccount: kubevirt-latency-checker
+      containers:
+      - name: latencycheck
+        image: "registry:5000/kubevirt-latency-checkup:latest"
+        env:
+        - name: "RESULT_CONFIGMAP_NAMESPACE"
+          value: "kubevirt-latency-check"
+        - name: "RESULT_CONFIGMAP_NAME"
+          value: "kubevirt-latency-check-result"
+        - name: "NAD_NAMESPACE"
+          value: "default"
+        - name: "NAD_NAME"
+          value: "sriov-network"
+        - name: "SAMPLE_DURATION_SECONDS"
+          value: "5"
+        - name: "SOURCE_NODE"
+          value: "sriov-worker"
+        - name: "TARGET_NODE"
+          value: "sriov-worker"
+        - name: "MAX_DESIRED_LATENCY_MILLISECONDS"
+          value: "10"

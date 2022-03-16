@@ -1,0 +1,57 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubevirts-reader-to-sa
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-latency-checker
+    namespace: kubevirt-latency-check
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: kubevirts-reader
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: network-reader-to-sa
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-latency-checker
+    namespace: kubevirt-latency-check
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: network-reader
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kubevirt-vmi-manager-to-sa
+  namespace: kubevirt-latency-check
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-latency-checker
+    namespace: kubevirt-latency-check
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: kubevirt-vmi-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: result-configmap-writer-to-sa
+  namespace: kubevirt-latency-check
+subjects:
+- kind: ServiceAccount
+  name: kubevirt-latency-checker
+  namespace: kubevirt-latency-check
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: checkup-result-writer
+
+

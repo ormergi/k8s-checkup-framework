@@ -8,7 +8,7 @@ MANIFESTS="$SCRIPT_PATH/manifests"
 CRI="${CRI:-podman}"
 
 # build kubevirt latency checkup container
-IMAGE="kubevirt-latency-check"
+IMAGE="kubevirt-latency-checkup"
 TAG="latest"
 CRI="$CRI" IMAGE="$IMAGE" TAG="$TAG" $SCRIPT_PATH/build/build-image
 
@@ -17,21 +17,21 @@ REGISTRY="${REGISTRY:-localhost:5000}"
 $CRI tag "${IMAGE}:${TAG}" "${REGISTRY}/${IMAGE}:${TAG}"
 $CRI push "${REGISTRY}/${IMAGE}:${TAG}"
 
-trap "kubectl delete -f $MANIFESTS" EXIT
+trap "kubectl delete -f $MANIFESTS/standalone" EXIT
 
 ## Create kubevirt network latency checkup prequisits
 kubectl apply -f $MANIFESTS/nads.yaml
 
-kubectl apply -f $MANIFESTS/namespace.yaml
-kubectl apply -f $MANIFESTS/serviceaccount.yaml
-kubectl apply -f $MANIFESTS/roles.yaml
-kubectl apply -f $MANIFESTS/rolebindings.yaml
-kubectl apply -f $MANIFESTS/results-configmap.yaml
-kubectl apply -f $MANIFESTS/latency-check-job.yaml
+kubectl apply -f $MANIFESTS/standalone/namespace.yaml
+kubectl apply -f $MANIFESTS/standalone/serviceaccount.yaml
+kubectl apply -f $MANIFESTS/standalone/roles.yaml
+kubectl apply -f $MANIFESTS/standalone/rolebindings.yaml
+kubectl apply -f $MANIFESTS/standalone/results-configmap.yaml
+kubectl apply -f $MANIFESTS/standalone/latency-check-job.yaml
 
 # follow the checkup logs..
-working_ns=$(cat $MANIFESTS/namespace.yaml | grep -Po "name: \K.*")
-checkup_job=$(cat $MANIFESTS/latency-check-job.yaml | grep metadata: -A 2 | grep -Po "name: \K.*")
+working_ns=$(cat $MANIFESTS/standalone/namespace.yaml | grep -Po "name: \K.*")
+checkup_job=$(cat $MANIFESTS/standalone/latency-check-job.yaml | grep metadata: -A 2 | grep -Po "name: \K.*")
 job_name_label="job-name=$checkup_job"
 
 kubectl get job $checkup_job -n $working_ns
@@ -44,6 +44,6 @@ kubectl logs $pod -n $working_ns --follow | tee
 kubectl wait job -n $working_ns $checkup_job --for condition=complete
 
 # print latency check results from the result ConfigMap
-results_configmap=$(cat $MANIFESTS/results-configmap.yaml | grep -Po "name: \K.*")
-results_configmap_ns=$(cat $MANIFESTS/results-configmap.yaml | grep -Po "namespace: \K.*")
+results_configmap=$(cat $MANIFESTS/standalone/results-configmap.yaml | grep -Po "name: \K.*")
+results_configmap_ns=$(cat $MANIFESTS/standalone/results-configmap.yaml | grep -Po "namespace: \K.*")
 kubectl get cm $results_configmap -n $results_configmap_ns -o jsonpath='{.data}' | jq
