@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: checkup
+  namespace: kubevirt-vm-latency
+spec:
+  activeDeadlineSeconds: 
+  ttlSecondsAfterFinished: 30
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: "Never"
+      terminationGracePeriodSeconds: 5
+      serviceAccount: checker
+      containers:
+      - name: checkup
+        image: kubevirt-vm-latency-checkup:devel
+        env:
+        - name: "RESULT_CONFIGMAP_NAMESPACE"
+          value: "kubevirt-vm-latency"
+        - name: "RESULT_CONFIGMAP_NAME"
+          value: "results"
+        - name: "NAD_NAMESPACE"
+          value: "default"
+        - name: "NAD_NAME"
+          value: "sriov-network"
+        - name: "SAMPLE_DURATION_SECONDS"
+          value: "5"
+        - name: "SOURCE_NODE"
+          value: "sriov-worker"
+        - name: "TARGET_NODE"
+          value: "sriov-worker"
+        - name: "MAX_DESIRED_LATENCY_MILLISECONDS"
+          value: "10"

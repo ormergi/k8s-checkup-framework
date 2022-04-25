@@ -1,0 +1,59 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubevirts-reader
+rules:
+  - apiGroups: ["kubevirt.io"]
+    resources:
+    - kubevirts
+    verbs:
+    - get
+    - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: network-reader
+rules:
+  - apiGroups: ["k8s.cni.cncf.io"]
+    resources:
+      - network-attachment-definitions
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubevirt-vmi-manager
+  namespace: default
+rules:
+  - apiGroups: ["kubevirt.io"]
+    resources:
+    - virtualmachineinstances
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+  - apiGroups: ["subresources.kubevirt.io"]
+    resources:
+    - virtualmachineinstances/console
+    verbs:
+    - get
+    - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubevirt-vm-latency-result-writer
+  namespace: kubevirt-vm-latency
+rules:
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - update
+  resourceNames: ["results"]
+

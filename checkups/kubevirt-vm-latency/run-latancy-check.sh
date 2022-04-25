@@ -7,43 +7,43 @@ MANIFESTS="$SCRIPT_PATH/manifests"
 
 CRI="${CRI:-podman}"
 
+KUBECTL="${KUBECTL:-kubectl}"
+
+KIND="${KIND:-./kind}"
+CLUSTER_NAME="${CLUSTER_NAME:-sriov}"
+
 # build kubevirt latency checkup container
 IMAGE="kubevirt-vm-latency-checkup"
 TAG="devel"
 CRI="$CRI" IMAGE="$IMAGE" TAG="$TAG" $SCRIPT_PATH/build/build-image
 
-# push to local registry
-REGISTRY="${REGISTRY:-localhost:5000}"
-$CRI tag "${IMAGE}:${TAG}" "${REGISTRY}/${IMAGE}:${TAG}"
-$CRI push "${REGISTRY}/${IMAGE}:${TAG}"
+# push image to nodes local registry
+$KIND load docker-image "${IMAGE}:${TAG}" --name $CLUSTER_NAME 
 
-trap "kubectl delete -f $MANIFESTS" EXIT
+trap "$KUBECTL delete -f $MANIFESTS/standalone 1> /dev/null" EXIT
 
-## Create kubevirt network latency checkup prequisits
-kubectl apply -f $MANIFESTS/nads.yaml
-
-kubectl apply -f $MANIFESTS/namespace.yaml
-kubectl apply -f $MANIFESTS/serviceaccount.yaml
-kubectl apply -f $MANIFESTS/roles.yaml
-kubectl apply -f $MANIFESTS/rolebindings.yaml
-kubectl apply -f $MANIFESTS/results-configmap.yaml
-kubectl apply -f $MANIFESTS/latency-check-job.yaml
+# deploy kubevirt-vm-latency checkup
+$KUBECTL apply -f $MANIFESTS/net-attach-defs.yaml
+$KUBECTL apply -f $MANIFESTS/standalone
 
 # follow the checkup logs..
-working_ns=$(cat $MANIFESTS/namespace.yaml | grep -Po "name: \K.*")
-checkup_job=$(cat $MANIFESTS/latency-check-job.yaml | grep metadata: -A 2 | grep -Po "name: \K.*")
+working_ns=$(cat $MANIFESTS/standalone/0_namespace.yaml | grep -Po "name: \K.*")
+checkup_job=$(cat $MANIFESTS/standalone/5_job.yaml | grep metadata: -A 2 | grep -Po "name: \K.*")
 job_name_label="job-name=$checkup_job"
 
-kubectl get job $checkup_job -n $working_ns
+$KUBECTL get job $checkup_job -n $working_ns
 echo "waiting for job pod to start.."
-timeout 30s bash -c "until kubectl get pod -n $working_ns -l $job_name_label --field-selector status.phase=Running --no-headers | grep . ; do sleep 2; done" || true
+timeout 30s bash -c "until $KUBECTL get pod -n $working_ns -l $job_name_label --field-selector status.phase=Running --no-headers | grep . ; do sleep 2; done" || true
 
-pod=$(kubectl get po -n $working_ns -l $job_name_label --no-headers | head -1 | awk '{print $1}')
-kubectl logs $pod -n $working_ns --follow | tee
+$KUBECTL logs job/$checkup_job -n $working_ns --follow | tee
 
-kubectl wait job -n $working_ns $checkup_job --for condition=complete
+while true; do 
+    $KUBECTL wait job -n $working_ns $checkup_job --for condition=complete && break
+    $KUBECTL wait job -n $working_ns $checkup_job --for condition=falied && break
+    sleep 5
+done
 
 # print latency check results from the result ConfigMap
-results_configmap=$(cat $MANIFESTS/results-configmap.yaml | grep -Po "name: \K.*")
-results_configmap_ns=$(cat $MANIFESTS/results-configmap.yaml | grep -Po "namespace: \K.*")
-kubectl get cm $results_configmap -n $results_configmap_ns -o jsonpath='{.data}' | jq
+results_configmap=$(cat $MANIFESTS/standalone/2_results-configmap.yaml | grep -Po "name: \K.*")
+results_configmap_ns=$(cat $MANIFESTS/standalone/2_results-configmap.yaml | grep -Po "namespace: \K.*")
+$KUBECTL get cm $results_configmap -n $results_configmap_ns -o jsonpath='{.data}' | jq

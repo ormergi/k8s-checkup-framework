@@ -13,7 +13,7 @@ spec:
       containers:
       - name: checkup-framework
         resources:
-        image: registry:5000/checkup-framework:latest
+        image: checkup-framework:devel
         env:
         - name: CONFIGMAP_NAMESPACE
           value: k8s-checkup-framework
