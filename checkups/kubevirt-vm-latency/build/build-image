@@ -25,12 +25,12 @@ readonly GO_ALPINE_IMAGE="golang:1.16.15-alpine3.15"
 readonly CONTAINER_GO_BUILD_CACHE_DIR="/root/.cache/go-build"
 readonly CONTAINER_SRC_DIR="/go/src"
 readonly CONTAINER_OUT_DIR="/go/bin"
-readonly BINARY_NAME="kubevirt-latency"
+readonly BINARY_NAME="kubevirt-vm-latency"
 
-readonly CACHE_VOLUME_NAME="go-build-cache-kubevirt-latency"
+readonly CACHE_VOLUME_NAME="go-build-cache-kubevirt-vm-latency"
 
-IMAGE_NAME=${IMAGE_NAME:-kubevirt-latency-checkup}
-TAG=${TAG:-latest}
+IMAGE_NAME=${IMAGE_NAME:-kubevirt-vm-latency-checkup}
+TAG=${TAG:-devel}
 
 CRI="${CRI:-podman}"
 

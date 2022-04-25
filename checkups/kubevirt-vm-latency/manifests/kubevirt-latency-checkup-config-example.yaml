@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: kubevirt-latency-checkup-example-config
+  name: kubevirt-vm-latency-checkup-example-config
   namespace: k8s-checkup-framework
 data:
-  spec.image: registry:5000/kubevirt-latency-checkup:latest
+  spec.image: registry:5000/kubevirt-vm-latency-checkup:latest
   spec.timeout: 5m
   spec.clusterRoles: |
     nodes-reader

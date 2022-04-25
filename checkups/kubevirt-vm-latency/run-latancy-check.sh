@@ -8,8 +8,8 @@ MANIFESTS="$SCRIPT_PATH/manifests"
 CRI="${CRI:-podman}"
 
 # build kubevirt latency checkup container
-IMAGE="kubevirt-latency-check"
-TAG="latest"
+IMAGE="kubevirt-vm-latency-checkup"
+TAG="devel"
 CRI="$CRI" IMAGE="$IMAGE" TAG="$TAG" $SCRIPT_PATH/build/build-image
 
 # push to local registry

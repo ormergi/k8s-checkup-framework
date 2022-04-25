@@ -18,4 +18,4 @@ spec:
         - name: CONFIGMAP_NAMESPACE
           value: k8s-checkup-framework
         - name: CONFIGMAP_NAME
-          value: kubevirt-latency-checkup-example-config
+          value: kubevirt-vm-latency-checkup-example-config
