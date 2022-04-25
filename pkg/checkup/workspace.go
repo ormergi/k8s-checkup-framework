@@ -391,7 +391,7 @@ func (w *workspace) deleteClusterRoleBindings(client *kubernetes.Clientset) erro
 		if err := deleteClusterRoleBinding(client, &clusterRoleBinding); err != nil {
 			clusterRoleBindingDeleteErrors = append(clusterRoleBindingDeleteErrors, err)
 		}
-		log.Printf("Successfuly deleted ClusterRole: %s", clusterRoleBinding.Name)
+		log.Printf("Successfuly deleted ClusterRoleBinding: %s", clusterRoleBinding.Name)
 
 	}
 
